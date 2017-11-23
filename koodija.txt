@@ -1,0 +1,21 @@
+def pelaa():
+    world.load_tiles()
+    pelaaja = Pelaaja()
+    # Linjat lataa aloitushuoneen ja n‰ytt‰‰ tekstin
+    huone = world.tile_exists(pelaaja.location_x, pelaaja.location_y)
+    print(room.intro_text())
+    while pelaaja.is_alive() and not pelaaja.victory:
+        huone = world.tile_exists(player.location_x, player.location_y)
+        huone.modify_pelaaja(pelaaja)
+        # Katsotaan uusiksi, sill‰ huone on voinut muuttaa pelaajan tilannetta
+        if pelaaja.is_alive() and not pelaaja.victory:
+            print("Choose your next action:\n")
+            available_actions = huone.available_actions()
+            for action in available_actions:
+                print(action)
+            action_input = input('Action: ')
+            for action in available_actions:
+                if action_input == action.hotkey:
+                    pelaaja.do_action(action, **action.kwargs)
+                    break
+

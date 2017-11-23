@@ -1,0 +1,32 @@
+class Aloitushuone(MapTile):
+    def intro_text(self):
+        return """
+        Dark room which holds nothing of value, you must choose a path.
+        """
+ 
+    def modify_pelaaja(self, pelaaja):
+        # Huoneella ei ole funktiota pelaajalle
+        pass
+ 
+class GoblinHuone(VihuHuone1):
+    def __init__(self, x, y):
+        super().__init__(x, y, enemies.Goblins())
+ 
+    def intro_text(self):
+        if self.enemy.is_alive():
+            return """
+            Three goblins surround you and fill you with fear!
+            """
+        else:
+            return """
+            The corpses of three goblins lay on the ground. I wonder if they have valuable goods in the pockets?
+            """
+ 
+class VarusteHuone(LootRoom):
+    def __init__(self, x, y):
+        super().__init__(x, y, items.Velhohattu())
+ 
+    def intro_text(self):
+        return """
+        You notice an object of wizardry on the ground. That could provide a significant boost to your intellect or ego.
+        """
