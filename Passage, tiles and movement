@@ -29,3 +29,5 @@ INSERT INTO Passage VALUES("StairR2", 7, 3, "W", FALSE, NULL);
 INSERT INTO Passage VALUES("StairR3", 7, 6, "S", FALSE, NULL);
 INSERT INTO Passage VALUES("RopeR1", 6, 2, "W", FALSE, NULL);
 INSERT INTO Passage VALUES("RopeR2", 6, 7, "E", FALSE, NULL);
+INSERT INTO Passage VALUES("WarpR1", 8, 7, "S", FALSE, NULL);
+INSERT INTO Passage VALUES("WarpR2", 8, 9, "W", FALSE , NULL);
