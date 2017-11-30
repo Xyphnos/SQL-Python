@@ -5,22 +5,6 @@ import random
 pelaajaElossa = True;
 peliLapaisty = False;  #Kun peli vedetty läpi, niin true
 vihutElossa = True;
-'''' HUOM!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-LISÄÄ NÄMÄ TIETOKANTAAN VAIN TESTAUSTA VARTEN:
-INSERT INTO stats VALUES (1, 50, 20, 10, 10, 1);
-
-INSERT INTO enemytype VALUES ("Goblin", 1, 40, 20, 50, 10);
-
-INSERT INTO enemy VALUES (1, 40, 1, 1,1);
-INSERT INTO enemy VALUES (2, 40, 1, 1,1);
-INSERT INTO enemy VALUES (3, 40, 1, 1,1);
-
-INSERT INTO player VALUES ("Hilfred", 1,20,1,1);
-INSERT INTO environment VALUES (1,1,1);
-INSERT INTO environment VALUES (1,2,1);
-INSERT INTO envt VALUES (1,"STARTING ROOM", 4);
-INSERT INTO envt VALUES (2,"GOBLIN ROOM", 4);
-'''
 
 
 def pelaa():
@@ -34,6 +18,7 @@ def pelaa():
            # Katsotaan uusiksi, sillä huone on voinut muuttaa pelaajan tilannetta        
             if pelaajaElossa==True and peliLapaisty==False:
                 suunta = ["n","s","e","w"] #ilmansuunnat
+                taistelu = [2, 4]  #Lisää huoneen id jossa vihollisia
                 print("")
                 location = getPelaajaTile()
                 introText = huoneenInfo(location)
@@ -44,13 +29,42 @@ def pelaa():
 
                 print("Choose your next action:\n")
                 availableActions = nykyinenHuone.available_actions()  #Tehdään lista toiminnoista
-                
+                print(availableActions)
+                eiTaisteltavaa = True #Booleani ettei there is nothing to fight against tule useampaan kertaan, laitettava ennen looppia ettei resettaa loopin sisällä
                 for action in availableActions:
                     print("   -"+action)
                 action_input = input("Action?")
                 for action in availableActions:
-                    if(action_input == "taistele"):  #Action.Hotkey LISÄTTÄVÄ, TÄMÄ VAIN ESIMerkki
-                        taistelu(3)
+                    if(action_input == "Fight"):
+                        print("")
+                        print("")
+                        for i in range(0,len(availableActions)):
+                            if (availableActions[i]=="taistele" and i != len(availableActions)): #Katsotaan voiko huoneessa taistella ja ettei i ole viimeinen listassa
+                                if eiTaisteltavaa==True:
+                                    nykyinenHuone.taistele()
+                            elif (availableActions[i]=="taistele"): 
+                                if eiTaisteltavaa==True:
+                                    nykyinenHuone.taistele()
+                            else:
+                                if  eiTaisteltavaa==True:
+                                        if i == len(availableActions):  #Jos ei viimeisen mennessä ole taistelua listassa niin
+                                            print("There is nothing to fight against")
+                                            eiTaisteltavaa = False
+                        t = "taistele"
+                        ta = "taistele"
+                        if ta in availableActions:
+                                print("")
+                        else:
+                                print("There is nothing to fight against")
+                                '''
+                        for t in availableActions:
+                            ta = "taistele"
+                            if ta in availableActions:
+                                print("")
+                            else:
+                                print("There is nothing to fight against")
+                                '''
+                        break
                     for i in range(0,3):  #ilman suuntiin liikkuminen
                         if(action_input == "move "+suunta[0] and i==0):
                             nykyinenHuone.liikuN()
@@ -63,7 +77,7 @@ def pelaa():
 
 
 def liiku(tile):  #liikutetaan pelaaja x,y koordniaatteihin
-    print("Tile: "+str(tile))
+   # print("Tile: "+str(tile)) LAITA TAKAISIN TARKASTUSTA VARTEN
     cur = db.cursor()
     sql = "UPDATE player SET tileID = "+str(tile)+" WHERE pid = 1"
     cur.execute(sql)
@@ -138,15 +152,38 @@ def huoneenInfo(huone):  #STRING
     return infoTeksti
 ###############################################################################HUONEEET____________________________________huoneet#########################
 class GoblinHuone():
+
     
+    def taistele(self):
+       taistelu(3, 1) #3 vihua, elossa = True
     def intro_text(self):
         
-        if vihutElossa==True:          
+        if goblinitElossa==False:          
            print("Three goblins surround you and fill you with fear!")         
         else:  
             print("The corpses of three goblins lay on the ground. I wonder if they have valuable goods in the pockets?")
     def available_actions(self):
+        elossa = True  #Tarkastetaan onko vihuja elossa huoneessa, jos ei ole, niin poistetaan "taistele" vaihtoehto toiminnoista
+        booleanLista = [True,True,True] #vihujen mukaan
+        cur = db.cursor()
+        sql = "select shp from enemy where tileid = 2;" #huoneen id
+        cur.execute(sql)
+        result = cur.fetchall()
+        for row in result:
+            i =row[0]
+            if i <= 0:
+                   row = 0         
+        intList = [i[j] for i in result for j in range(len(i))] #tuple intiksi
+        for i in range(0,len(result)):
+            if intList[i] <= 0:
+                booleanLista[i] = False
+
+        if any(booleanLista)==False: 
+            elossa = False
+        
         toiminnot = ["liiku", "taistele"]
+        if elossa==False:
+            toiminnot.remove("taistele")
         return toiminnot
     
     def liikuN(self):
@@ -236,7 +273,9 @@ class ropeBridge():
     def liikuW(self):
         liiku(2)
 class Treasury():
- 
+
+    vihujenMaara = 1
+     
     def available_actions(self):
         toiminnot = ["liiku", "Kerää"]
         return toiminnot
@@ -321,32 +360,47 @@ def vihuIske(dmg, vihuId):
     return
 
 
-def taistelu(vihujenMaara):
-    print("Huoneessa on 3 goblinia")
+def taistelu(vihujenMaara, escapeId):
+    #print("Huoneessa on 3 goblinia")
     lista = []
     vihutElossa = True #kun kaikki vihut on kuollu, niin false ja looppi loppuu
     
     while(vihutElossa == True):
         vihuja = mihinIsketaan(vihuElossa)    
         #Pelaajan vuoro
-        vihuId = int(input("Mihin vihuun haluat iskeä ("+vihuja+")"))
-        isku = int(input("Paljonko isket?"))
-        pelaajaIske(isku, vihuId)
-        print(vihuElossa)
-        print("vihuId: "+str(vihuId))
-        time.sleep(1)                   #odota 1 sekunti
-        for i in range(0,vihujenMaara): #Jokainen vihu iskee vuorollaan, tutkitaan jokainen yksi kerralaan läpi että ovatko ne elossa
-            time.sleep(1)
-            dmg = random.randint(4,13)  #random damagee 
-            if(vihuElossa[i]==True):            
-                vihuIske(dmg, i)
-            else:
-                print("                      Vihu nro."+str(i+1)+" on kuollu")
-        if any(vihuElossa)==False:  #jos kaikki vihut kuollu niin lopetetaan looppi
-            print("vihut kuollut")
-            vihutElossa = False
+        looppaa = True
+        tee = ""
+        while looppaa==True:
+                tee = input("Attack or Flee?")
+                if tee =="Flee":
+                    looppaa=False
+                elif tee=="Attack":
+                    looppaa=False
+        
+        if tee=="Attack":
+            vihuId = int(input("Which enemy you would like to hit ("+vihuja+")"))
+            isku = random.randint(10,50) #int(input("Paljonko isket?"))
+            pelaajaIske(isku, vihuId)
+            print(vihuElossa)
 
-
+            time.sleep(1)                   #odota 1 sekunti
+            for i in range(0,vihujenMaara): #Jokainen vihu iskee vuorollaan, tutkitaan jokainen yksi kerralaan läpi että ovatko ne elossa
+                time.sleep(1)
+                dmg = random.randint(4,13)  #random damagee 
+                if(vihuElossa[i]==True):            
+                    vihuIske(dmg, i)
+                else:
+                    print("                      Enemy nro."+str(i+1)+" on kuollu")
+            if any(vihuElossa)==False:  #jos kaikki vihut kuollu niin lopetetaan looppi
+                print("vihut kuollut")
+                vihutElossa = False
+        elif tee=="Flee":
+            print("")
+            print("")
+            print("")
+            print("You escaped!!")
+            vihutElossa=False
+            liiku(escapeId) #Pakene huoneesee
 def mihinIsketaan(lista):  #vaihtoehdot vihollisista, esim. (1,2,3,4) 
     vaihtoEhdot = "";      #alkuun tyhjä
     for i in range(0, len(lista)):        
