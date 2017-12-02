@@ -35,6 +35,12 @@ def pelaa():
                 print("")
                 print("INFO:")
                 introText = huoneenInfo(location)
+                
+                
+                nykyinenHuone.kartta()
+                    
+                if pelaajanHuoneID == 2: #Jos ollaan goblin huoneessa, niin laitetaan lisä info teksti
+                    nykyinenHuone.intro_text()
                 print("")
                 tavaraLista = nykyinenHuone.tavarat()
                 print("")
@@ -55,8 +61,8 @@ def pelaa():
              #   print("Hotkeys: 'move [n,s,e,w]', Examine [item name], Pick [item name], Use [item name], Fight")
              #   print("Actions you can do:")
                 eiTaisteltavaa = True #Booleani ettei there is nothing to fight against tule useampaan kertaan, laitettava ennen looppia ettei resettaa loopin sisällä
-               # for action in availableActions:
-                 #   print("   -"+action)
+                for action in availableActions:
+                   print("   -"+action)
                 action_input = input("Action?")     
                # for action in availableActions:
                 if(action_input == "Fight"):
@@ -92,7 +98,7 @@ def pelaa():
                 for i in range(0, len(tavaraLista)):  #tavaroiden tutkiminen
                     if(action_input == "Examine "+tavaraLista[i]):
                         print("")
-                        print("Examining....")
+                        print("Examining "+tavaraLista[i]+"....")
                         time.sleep(1)   
                         tavaranTiedot(tavaraLista[i])
                         time.sleep(1)   
@@ -106,9 +112,18 @@ def pelaa():
 
                 for i in range(0, len(tavaraLista)):            #Tavaran poimininen
                         if(action_input == "Pick "+str(tavaraLista[i])):
-                            print("")
-                            print("Picking...")
-                            keraaItem(1)  #Otetaan pelaajaalle
+                            if pelaajanHuoneID != 1:  #Jos ei olla ekassa huoneessa jossa voi ottaa vain 1:n kolmesta aseesta
+                                print("")
+                                print("Picking "+tavaraLista[i]+"...")
+                                time.sleep(1)
+                                keraaItem(tavaraLista[i])  #Otetaan pelaajaalle
+                            else:
+                               print(str(nykyinenHuone.otettuBool)+"   <---- OTETTU BOOL")
+                               if nykyinenHuone.otettuBool==False:
+                                    print(""+str(i))
+                                    print("Picking "+tavaraLista[i]+"...")
+                                    keraaItem(tavaraLista[i])  #Otetaan pelaajaalle
+                                    time.sleep(1)
 
                 for i in range(0, len(pelaajanTavarat)):  #tavaran käyttäminen
                         if(action_input == "Use "+str(pelaajanTavarat[i])):
@@ -116,7 +131,7 @@ def pelaa():
                             print("Player is dressing up "+pelaajanTavarat[i])
                             pueItem(pelaajanTavarat[i])
                 
-                for i in range(0,3):  #ilman suuntiin liikkuminen
+                for i in range(0,4):  #ilman suuntiin liikkuminen
                         if(action_input == "Move "+suunta[0] and i==0):
                             print("")
                             nykyinenHuone.liikuN()
@@ -130,6 +145,13 @@ def pelaa():
                             print("")
                             nykyinenHuone.liikuW()
                         valintaTekematta = False
+                if action_input == "Inventory":
+                        print("")
+                        print("You have in inventory:"+str(pelaajanTavarat))
+
+                        
+                if action_input == "Use Rope" and pelaajanHuoneID == 6: #Köydellä ylitys
+                         nykyinenHuone.koysi()
                       #  break
                     
                     #for i in range(0,
@@ -141,7 +163,7 @@ def pelaa():
                         #    print("")
                          #   print("You can't do that")
 def tavaranTiedot(nimi):
-
+    info = ""
     cur = db.cursor()
     sql = "SELECT description From item where itid = (select itid From itemtype Where name = '"+nimi+"');"
     cur.execute(sql)
@@ -150,16 +172,18 @@ def tavaranTiedot(nimi):
             info = row[0]
     print(info)
 
-def keraaItem(itemId):  #item id, esim 1 = kirja 2 = taikahattu tms.
-    itemNimi = ""
+def keraaItem(itemNimi):  #item id, esim 1 = kirja 2 = taikahattu tms.
+   # itemNimi = ""
+    itemId = 0
     cur = db.cursor()
-    sqlItemNimi = "SELECT name From  itemtype WHERE itemtype.ITID = "+str(itemId)  #Itemin nimi katsotaan listasta
-    cur.execute(sqlItemNimi)
+    #sqlItemNimi = "SELECT name From  itemtype WHERE itemtype.ITID = "+str(itemId)  #Itemin nimi katsotaan listasta
+    sql = "SELECT iid FROM item, itemtype WHERE item.itid = itemtype.ITID AND itemtype.Name = '"+str(itemNimi)+"';"
+    cur.execute(sql)
     result = cur.fetchall()
     for row in result:                  #asetetaan itemin nimi id:n mukaan alla olevaan kyselyyn jossa kysytään otetaanko esim kirja haltuun
-            print("Item nimi: "+row[0])
-            itemNimi = str(row[0])
-
+            print("Item id: "+str(row[0]))
+            itemId = str(row[0])
+    
     #Kysytään otetaanko kyseinen esine haltuun
     ke = input("ota "+itemNimi+" (k/e)?")    
     if(ke=="k"):
@@ -236,6 +260,9 @@ def liiku(tile):  #liikutetaan pelaaja x,y koordniaatteihin
     cur = db.cursor()
     sql = "UPDATE player SET tileID = "+str(tile)+" WHERE pid = 1"
     cur.execute(sql)
+    print("Moving...")
+    time.sleep(1)
+   
     return
 
 def mikaHuone(tile):  #Katsotaan missä huoneessa ollaan ja sen mukaan tehdään action
@@ -314,6 +341,16 @@ def huoneenInfo(huone):  #STRING
 ###############################################################################HUONEEET____________________________________huoneet#########################
 class GoblinHuone():
 
+    def kartta(self):
+            print("|-----north-----|")
+            print("|               |")
+            print("|               |")
+            print("|    you        |")
+            print("|               |")
+            print("|   GOBLINS     |")
+            print("|               |")
+            print("------south-----|")
+            return
     def tutkittavaa(self):
         lista = ["Goblin"]
         return lista
@@ -335,31 +372,15 @@ class GoblinHuone():
         return tavaraLista
     
     def taistele(self):
-       taistelu(3, 1) #3 vihua, elossa = True
+       taistelu(3, 1, 0) #3 vihua, elossa = True
     def intro_text(self):
-        
-        if goblinitElossa==False:          
+        elossa = checkAlive()
+        if elossa==True:          
            print("Three goblins surround you and fill you with fear!")         
         else:  
             print("The corpses of three goblins lay on the ground. I wonder if they have valuable goods in the pockets?")
     def available_actions(self):
-        elossa = True  #Tarkastetaan onko vihuja elossa huoneessa, jos ei ole, niin poistetaan "taistele" vaihtoehto toiminnoista
-        booleanLista = [True,True,True] #vihujen mukaan
-        cur = db.cursor()
-        sql = "select shp from enemy where tileid = 2;" #huoneen id
-        cur.execute(sql)
-        result = cur.fetchall()
-        for row in result:
-            i =row[0]
-            if i <= 0:
-                   row = 0         
-        intList = [i[j] for i in result for j in range(len(i))] #tuple intiksi
-        for i in range(0,len(result)):
-            if intList[i] <= 0:
-                booleanLista[i] = False
-
-        if any(booleanLista)==False: 
-            elossa = False
+        elossa = checkAlive()
         
         toiminnot = ["liiku", "taistele"]
         if elossa==False:
@@ -369,6 +390,20 @@ class GoblinHuone():
     def liikuN(self):
         liiku(1)
     def liikuS(self):
+        elossa = checkAlive()        
+        if elossa==False:
+            liiku(6)
+        else:            
+            print("Kill Goblins out of your way first!")
+            time.sleep(1)
+    def liikuE(self):
+        print("You cannot move there.")
+    def liikuW(self):
+        print("You cannot move there.")
+
+
+
+def checkAlive():
         elossa = True  #Tarkastetaan onko vihuja elossa huoneessa, jos ei ole, niin poistetaan "taistele" vaihtoehto toiminnoista
         booleanLista = [True,True,True] #vihujen mukaan
         cur = db.cursor()
@@ -386,39 +421,61 @@ class GoblinHuone():
 
         if any(booleanLista)==False: 
             elossa = False
-        if elossa==False:
-            liiku(6)
-        else:
-            print("Kill Goblins out of your way first!")
-    def liikuE(self):
-        print("You cannot move there.")
-    def liikuW(self):
-        print("You cannot move there.")
-        
+        return elossa
+    
 class AloitusHuone():
 
-    def tutkittavaa(self):
+    otettuBool = False
+
+    def kartta(self):
+        print("|---------------|")
+        print("|               |")
+        print("|               |")
+        print("|    you       east")
+        print("|                ")
+        print("|               |")
+        print("|               |")
+        print("------south-----|")
+    
+    def tutkittavaa(self):  #Laita asioita mitä haluat tutkia
         lista = ["Gear","Door"]
         return lista
     def tulos(self, string):
         st = ""
         if string == "Gear":
-            print("In gear there is a hat, sword and mushroom...")
+            print("In gear, there is a sword, spellbook and mushroom...")
         elif string == "Door":
-            print("Door is unlocked")
+            print("Doors are pointing to south and east, both are unlocked...")
         return st
         
     
     def tavarat(self):  #Mitä tavaroita huoneessa on
         tavaraLista = []
+        tavaraOtettu = False #jos pelaaja ottaa yhden tavaran, kaikki katoaa
         cur = db.cursor()
       #  sql = "SELECT name From itemtype where itid = (select itid From item Where tileId = 1);" #antaa esineen nimen joka on kyseisessä tilessä
         sql = "SELECT name FROM itemtype, item WHERE itemtype.ITID = item.ITID AND item.TileID = 1;"
+        sql2 = "SELECT pid FROM itemtype, item WHERE itemtype.ITID = item.ITID AND item.TileID = 1;"
         cur.execute(sql)
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("Items in this room: "+str(tavaraLista))
+          
+        cur.execute(sql2) #ITEMIN TARKASTUS
+        result2 = cur.fetchall()
+        lista = [i[j] for i in result2 for j in range(len(i))] #tuple intiksi
+        if len(lista)<3:
+            tavaraOtettu = True
+
+        if tavaraOtettu == False:
+            print("Items in this room: "+str(tavaraLista))
+            print("You can only choose one of them...")
+        else:
+            self.otettuBool = True
+            text = "Dark room with two doors"
+            sql3 = "UPDATE tile SET description = '"+text+"' WHERE tileID = 1";
+            cur.execute(sql3)
+            print("Nothing here anymore.")
         return tavaraLista
                                    
     def available_actions(self):
@@ -436,6 +493,16 @@ class AloitusHuone():
                 
 class VarusteHuone():
 
+    def kartta(self):
+        print("|---------------|")
+        print("|               |")
+        print("|               |")
+        print("west    you    hole")
+        print("                |")
+        print("|               |")
+        print("|               |")
+        print("------south-----|")
+
     def tutkittavaa(self):
         lista = ["Door"]
         return lista
@@ -449,7 +516,7 @@ class VarusteHuone():
         tavaraLista = []
         cur = db.cursor()
         #sql = "SELECT name From itemtype where itid = (select itid From item Where tileId = 3);" #antaa esineen nimen joka on kyseisessä tilessä
-        sql = "SELECT description FROM item where tileId = 3;"
+        sql = "SELECT name FROM itemtype, item WHERE itemtype.ITID = item.ITID AND item.TileID = 3;"
         cur.execute(sql)
         result = cur.fetchall()
         for row in result:
@@ -466,7 +533,9 @@ class VarusteHuone():
     def liikuS(self):
         liiku(4)
     def liikuE(self):
-        liiku(7)
+        #liiku(7)
+        print("There is a hole in eastern wall...")
+        time.sleep(1)
     def liikuW(self):
         liiku(1)
 
@@ -489,6 +558,16 @@ class warpZone():
         liiku(1)
 
 class stairWay(): #id 7
+
+    def kartta(self):
+        print("|---------------|")
+        print("|   STAIRWAYS   |")
+        print("|               |")
+        print("west    you     |")
+        print("|               |")
+        print("|               |")
+        print("|               |")
+        print("------south-----|")
 
     def tutkittavaa(self):
         lista = ["Stairway"]
@@ -523,6 +602,16 @@ class stairWay(): #id 7
     def liikuW(self):
         liiku(3)
 class ropeBridge(): #id 6
+
+    def kartta(self):
+        print("|-----------------------|")
+        print("|                       |")
+        print("|                       |")
+        print("east    ---BRIDGE---  west")
+        print("|                       |")
+        print("|                       |")
+        print("|                       |")
+        print("------------------------|")
     
     def tutkittavaa(self):
         lista = ["Bridge"]
@@ -530,7 +619,7 @@ class ropeBridge(): #id 6
     def tulos(self, string):
         st = ""
         if string == "Bridge":
-            print("Bridge, don't jump!")
+            print("Bridge, it looks shaky...")
         return st
 
     def tavarat(self):  #Mitä tavaroita huoneessa on
@@ -553,11 +642,47 @@ class ropeBridge(): #id 6
     def liikuS(self):
         print("You cannot move there.")
     def liikuE(self):
+        koysi()
         liiku(7)
     def liikuW(self):
+        koysi()
         liiku(2)
+        
+def koysi():
+        
+        print("You walk through bridge")
+        time.sleep(1)
+        print("Shaking...")
+        time.sleep(1)
+        p = 60 #getPelaajaPaino(60)
+        if   p < 50:            
+            ("You succesfully moved through bridge!")
+            time.sleep(1)
+        elif p > 50:
+            time.sleep(1)
+            ("SHAKING!!!")
+            time.sleep(1)
+            ("BRIDGE BROKED! YOU ARE FALLING IN DEEPS!!")
+
+def getPelaajaPaino(paino):
+    p = paino
+    return p
+
 class Treasury(): #id 4
 
+    def kartta(self):
+        print("|-----north-----|")
+        print("|               |")
+        print("|      you      |")
+        print("|                ")
+        print("|     MONSTER   east ")
+        print("|               |")
+        print("|               |")
+        print("----------------|")
+
+    def taistele(self):
+        taistelu(1, 3, 4) #3 vihua, elossa = True
+        return
     def tutkittavaa(self):
         lista = ["Goblin"]
         return lista
@@ -581,19 +706,29 @@ class Treasury(): #id 4
     vihujenMaara = 1
      
     def available_actions(self):
-        toiminnot = ["liiku"]
+        toiminnot = ["liiku", "taistele"]
         return toiminnot
 
     def liikuN(self):
         liiku(3)
     def liikuS(self):
-        liiku(2)
-    def liikuE(self):
         print("You cannot move there.")
+    def liikuE(self):
+        liiku(5)
     def liikuW(self):
         print("You cannot move there.")
         
 class shop(): #id 5
+
+    def kartta(self):
+        print("|---------------|")
+        print("|               |")
+        print("|               |")
+        print("west    you     |")
+        print("                |")
+        print("|    shopkeeper |")
+        print("|               |")
+        print("----------------|")
 
     def tutkittavaa(self):
         lista = ["Goblin"]
@@ -625,16 +760,19 @@ class shop(): #id 5
     def liikuS(self):
         print("You cannot move there.")
     def liikuE(self):
-        liiku(4)
-    def liikuW(self):
         print("You cannot move there.")
+    def liikuW(self):
+        liiku(4)
+        
 
 #########################################################################COMBAT
 vihuElossa = [True, True, True] #id:n mukaan järjestykseen vihut, jos false niin vihu on kuollut
 pelaajaElossa = True
 
-def pelaajaIske(dmg, vihuId):
-    print("Pelaaja iskee "+str(dmg))
+def pelaajaIske(dmg, vihuId): #usea = True on useampi vihu
+    print("You hit "+str(dmg))
+    time.sleep(1)
+    print("")
     cur = db.cursor()
     #Otetaan nykyinen hp
     sqlHp = "select SHP from enemy where eid = "+str(vihuId)   
@@ -652,15 +790,16 @@ def pelaajaIske(dmg, vihuId):
     # Tulostetaan tuloslistan tiedot rivi kerrallaan
     for row in result:
             hp = int(row[0])
-    print("Vihun hp: "+str(hp))
+    print("Enemy's current health: "+str(hp))
     if hp <= 0:
         #vihu kuolee
-        print("KUOLLUT")
+        hp = 0
+        print("Enemy is dead")
         vihuElossa[vihuId-1] = False
     return
 
 def vihuIske(dmg, vihuId):
-    print("                        Vihu nro."+str(vihuId+1)+" iskee "+str(dmg))
+    print("                        Enemy nro."+str(vihuId+1)+" hits "+str(dmg))
     cur = db.cursor()
     sqlHp = "select hp from player"
     cur.execute(sqlHp)
@@ -676,16 +815,16 @@ def vihuIske(dmg, vihuId):
     # Tulostetaan tuloslistan tiedot rivi kerrallaan
     for row in result:
             hp = int(row[0])
-    print("Pelaajam hp: "+str(hp))
+    print("Your current health: "+str(hp))
     if hp <= 0:
         #Pelaaja kuolee
-        print("kuollu")
-
+        print("You died")
+    pelaajaElossa = False
             
     return
 
 
-def taistelu(vihujenMaara, escapeId):
+def taistelu(vihujenMaara, escapeId, yksiloVihu): #yksiloVihu jos vain 1
     #print("Huoneessa on 3 goblinia")
     lista = []
     vihutElossa = True #kun kaikki vihut on kuollu, niin false ja looppi loppuu
@@ -697,29 +836,39 @@ def taistelu(vihujenMaara, escapeId):
         tee = ""
         while looppaa==True:
                 tee = input("Attack or Flee?")
-                if tee =="Flee":
+                if tee =="Flee" or tee=="f":
                     looppaa=False
-                elif tee=="Attack":
+                elif tee=="Attack" or tee=="a":
                     looppaa=False
         
-        if tee=="Attack":
-            vihuId = int(input("Which enemy you would like to hit ("+vihuja+")"))
+        if tee=="Attack" or "a":
+            if vihujenMaara > 1: #JOS vihollisia on enemmän kuin 1
+                vihuId = int(input("Which enemy you would like to hit ("+vihuja+")"))
+            else:
+                vihuId = yksiloVihu
             isku = random.randint(10,50) #int(input("Paljonko isket?"))
             pelaajaIske(isku, vihuId)
-            print(vihuElossa)
+           # print(vihuElossa) #muuta
 
             time.sleep(1)                   #odota 1 sekunti
-            for i in range(0,vihujenMaara): #Jokainen vihu iskee vuorollaan, tutkitaan jokainen yksi kerralaan läpi että ovatko ne elossa
+            if vihujenMaara > 1:
+                
+                for i in range(0,vihujenMaara): #Jokainen vihu iskee vuorollaan, tutkitaan jokainen yksi kerralaan läpi että ovatko ne elossa
+                    time.sleep(1)
+                    dmg = random.randint(4,13)  #random damagee 
+                    if(vihuElossa[i]==True):            
+                        vihuIske(dmg, i)
+                    else:
+                        print("                      Enemy nro."+str(i+1)+" is dead.")
+                if any(vihuElossa)==False:  #jos kaikki vihut kuollu niin lopetetaan looppi
+                    print("All enemies are dead")
+                    vihutElossa = False
+            else:  #Vihuja on vain 1
                 time.sleep(1)
-                dmg = random.randint(4,13)  #random damagee 
-                if(vihuElossa[i]==True):            
-                    vihuIske(dmg, i)
-                else:
-                    print("                      Enemy nro."+str(i+1)+" on kuollu")
-            if any(vihuElossa)==False:  #jos kaikki vihut kuollu niin lopetetaan looppi
-                print("vihut kuollut")
-                vihutElossa = False
-        elif tee=="Flee":
+                dmg = random.randint(4,13)  #random damagee
+                if  vihutElossa == False:
+                    vihuIske(dmg,huoneId)
+        elif tee=="Flee" or "f":
             print("")
             print("")
             print("")
@@ -737,7 +886,7 @@ def mihinIsketaan(lista):  #vaihtoehdot vihollisista, esim. (1,2,3,4)
                 else:
                     if(lista[i]==True):
                           vaihtoEhdot = vaihtoEhdot+str(i+1)+","  #laitetaan pilkku perään niin saadaan (1,2,3,...)
-    print(vaihtoEhdot)
+   # print(vaihtoEhdot)
     return vaihtoEhdot
 
 ############################################################################################################################COMBAT LOPPUU
