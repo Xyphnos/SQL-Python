@@ -1,0 +1,39 @@
+def tutkittavaa(self):
+        lista = ["Goblin","Painting"]
+        return lista
+    def tulos(self, string):
+        st = ""
+        if string == "Painting":
+            print("|---------------|")
+            print("|12345678ABYPEFG|")
+            print("|13345678ABCDEFG|")
+            print("|12345678ABCDEFG|")
+            print("|12375678ABGMEFG|")
+            print("|1234E678ABCDFTG|")
+            print("|12345S78ABCDEFG|")
+            print("|---------------|")
+        return st
+        
+        
+        
+      
+    def available_actions(self):
+        toiminnot = ["liiku", "examine"]
+        return toiminnot
+
+    def liikuN(self):
+        print("You cannot move there.")
+    def liikuS(self):
+        liiku(4)
+    def liikuE(self):
+        print("There is a hole on the eastern wall...")
+        kuiskaus = input ("Maybe you should try whispering a keyword to the other side? This works in movies sometimes:")
+        if kuiskaus == "1337ES":
+         print ("The wall shakes violently and as it erupts, a pathway opens up before you.")
+         liiku(7)
+        time.sleep(1)
+    def liikuW(self):
+        liiku(1)
+        
+        
+        
