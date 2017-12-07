@@ -1224,7 +1224,7 @@ def taistelu(vihujenMaara, escapeId): #yksiloVihu jos vain 1
                 time.sleep(1) 
             elif x == "charisma":
                 eff = kaytaCharisma()
-                pelaajaCH(eff, vihuId, 4)
+                pelaajaCH(eff, vihuId, 2)
                 time.sleep(1)
                 
                 
