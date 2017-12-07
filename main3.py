@@ -7,7 +7,7 @@ peliLapaisty = False;  #Kun peli vedetty läpi, niin true
 originalData = []
 ogEnemy = []
 ogItem = []
-
+ase = ""
 
 def Stats():
     i = 0
@@ -305,8 +305,15 @@ def pelaa():
                 for i in range(0, len(pelaajanTavarat)):  #tavaran käyttäminen
                         if(action_input == "use "+str(pelaajanTavarat[i].lower())):
                             print("")
-                            print("Player is dressing up "+pelaajanTavarat[i])
+                            print("You are dressing up "+pelaajanTavarat[i])
+                            time.sleep(1)
                             pueItem(pelaajanTavarat[i])
+                for i in range(0, len(pelaajanTavarat)):  #tavaran käyttäminen
+                        if(action_input == "drop "+str(pelaajanTavarat[i].lower())):
+                            print("")
+                            print("You are dropping"+pelaajanTavarat[i])
+                            time.sleep(1)
+                            riisuItem(pelaajanTavarat[i])
                 
                 for i in range(0,4):  #ilman suuntiin liikkuminen
                         if(action_input == "move "+suunta[0] and i==0):
@@ -422,8 +429,43 @@ def pueItem(nimi):  #pukee varusteen tai aseen pelaajalle
     charisma = "0"
     setPelaajaStats(hp, attack, intellect, charisma)
     p = getPelaaja()
+    global ase
+    ase = nimi
     return stringList
 
+def riisuItem(nimi):
+
+    lista = pelaajanItemit
+    for i in range(0,len(lista)):
+        if lista[i] == nimi:
+            sql2 = "UPDATE item SET pid = NULL where (SELECT name FROM itemtype, item WHERE item.itid = itemtype.itid AND name = '"+nimi+"';"
+            global ase
+            if ase==nimi:  #tarkastetaan että pelaajalla on tämä päällä
+                cur = db.cursor()    
+                sql = "SELECT Attack, defense, Intellect, Hp, Special From itemtype Where name = '"+nimi+"';"
+                cur.execute(sql)
+                result = cur.fetchall()
+
+                stringList = [i[j] for i in result for j in range(len(i))] #tuple stringiksi
+                print("New Stats: "+str(stringList))
+                attack = int(stringList[0])
+                defense = int(stringList[1])
+                intellect = int(stringList[2])
+                hp = int(stringList[3])
+                charisma = "0"
+
+                newHp = str(0 - hp)
+                newAttack = str(0-attack)
+                newDefense = str(0-defense)
+                newIntellect = str(0-intellect)
+    
+                setPelaajaStats(newHp, newAttack, newIntellect, charisma)
+                p = getPelaaja()  #tulostaa uudet statsit
+                cur.execute(sql2)
+            else:
+                cur.execute(sql2)
+                
+    return 
 ########################################################################################################################################         LIIKKUMINEN
 
 def liiku(tile):  #liikutetaan pelaaja x,y koordniaatteihin
@@ -1146,7 +1188,7 @@ def kauppa():
         print("I'm fine thanks")
 
 def katsoOnkoVaraa(hinta):
-
+    cur = db.cursor()
     onVaraa = False
     raha = getPelaajaRaha()            
     if hinta>raha:
@@ -1160,7 +1202,7 @@ def katsoOnkoVaraa(hinta):
         print("")
         print("You are welcome!")
         raha = raha-hinta
-        print("You have "+raha+" gold left")
+        print("You have "+str(raha)+" gold left")
         sql2 = "UPDATE player SET money = "+str(raha)+";"
         cur.execute(sql2)
         onVaraa = True
