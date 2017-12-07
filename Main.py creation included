@@ -4,6 +4,8 @@ import random
 
 pelaajaElossa = True;
 peliLapaisty = False;  #Kun peli vedetty läpi, niin true
+#global pElossa
+
 #vihutElossa = True;
 
 def Stats():
@@ -12,6 +14,7 @@ def Stats():
     Str = 1
     Cha = 1
     Int = 1
+    mag = 0
     print("You can now distribute your stats to Strength, Charisma or Intellect, your stats start at 1 and go up to 3.")
     print("You have 3 skill points to distribute.")
     while x == 1:
@@ -36,9 +39,9 @@ def Stats():
             if Int < 3:
                 Int = Int+1
                 i = i+1
-                print(Str, Int, Cha)
-            if Int > 1:
-                mag = 2
+                mag = mag+1
+                print(Str, Int, Cha, mag)
+                
         if i==3:
             print("Str "+str(Str)+" Cha "+str(Cha)+" Int "+str(Int))
             Ask = input("Do you want these to be your stats yes/no?: ")
@@ -49,8 +52,9 @@ def Stats():
                 Str = 1
                 Cha = 1
                 Int = 1
+                mag = 0
                 x = 1
-    setPelaajaStats(str(100), str(Str), str(Int), str(Cha))
+    createPelaajaStats(str(100), str(Str), str(Int), str(Cha), str(mag))
     return
 
 def setPelaajaName(Name):
@@ -71,6 +75,18 @@ def Name():
             x = 1
     return
 
+def gameOver():
+    time.sleep(1)
+    print("You died.")
+    x = input("Retry  y/n?")
+    if x == "y":
+        pelaa()
+        global pelaajaElossa
+        pelaajaElossa = True
+    else:
+        print("Game really over.")
+    return
+
 def pelaa():
 
     pelaaja = getPelaaja()      #pelaaja = pelaaja()  , pelaajan tiedot listana
@@ -83,9 +99,8 @@ def pelaa():
     print("Hotkeys: 'Move [n,s,e,w]', Examine [item name], Pick [item name], Use [item name], Fight")
     Name()
     Stats()
-    while pelaajaElossa==True or peliLapaisty==False:
-
-           # Katsotaan uusiksi, sillä huone on voinut muuttaa pelaajan tilannetta        
+    while pelaajaElossa==True and peliLapaisty==False:
+           # Katsotaan uusiksi, sillä huone on voinut muuttaa pelaajan tilannetta
             if pelaajaElossa==True and peliLapaisty==False:
                 suunta = ["n","s","e","w"] #ilmansuunnat
                 taistelu = [2, 4]  #Lisää huoneen id jossa vihollisia
@@ -381,6 +396,11 @@ def setPelaajaName(nimi):
     cur.execute(sql)
     return
 
+def createPelaajaStats(hp, attack, intellect, charisma, MagicID):
+    cur = db.cursor()
+    sql = "Update player Set hp = hp +"+hp+", attack = attack *"+attack+", intellect = intellect *"+intellect+", charisma = charisma*"+charisma+", MagicID = MagicID +"+MagicID+";"
+    cur.execute(sql)
+    return
 
 def setPelaajaStats(hp, attack, intellect, charisma):
     cur = db.cursor()
@@ -415,12 +435,23 @@ def huoneenInfo(huone):  #STRING
 class GoblinHuone():
 
     def kartta(self):
+        elossa = checkAlive()
+        if elossa == True:
             print("|-----north-----|")
             print("|               |")
             print("|               |")
             print("|    you        |")
             print("|               |")
             print("|   GOBLINS     |")
+            print("|               |")
+            print("------south-----|")
+        else:
+            print("|-----north-----|")
+            print("|               |")
+            print("|               |")
+            print("|    you        |")
+            print("|               |")
+            print("|               |")
             print("|               |")
             print("------south-----|")
             return
@@ -474,9 +505,26 @@ class GoblinHuone():
     def liikuW(self):
         print("You cannot move there.")
 
+def checkAliveYksi(huoneId):
+    elossa = True
+    booleani = True
+    cur = db.cursor()
+    sql = "select shp from enemy where tileid = "+str(huoneId)+";"
+    cur.execute(sql)
+    result = cur.fetchall()
+    intList = [i[j] for i in result for j in range(len(i))] #tuple intiksi
+    if intList[0] <= 0:
+        elossa = False
+    sqlCH = "SELECT CH FROM enemy WHERE TileID = "+str(huoneId)+";"
+    cur.execute(sqlCH)
+    result = cur.fetchall()
+    for row in result:
+            CH = row[0] # Ehkä väärin, vaatii testausta
+    if CH == 0:
+        elossa = False
+    return elossa
 
-
-def checkAlive():
+def checkAlive():  #usea vihu
         elossa = True  #Tarkastetaan onko vihuja elossa huoneessa, jos ei ole, niin poistetaan "taistele" vaihtoehto toiminnoista
         booleanLista = [True,True,True] #vihujen mukaan
         cur = db.cursor()
@@ -494,6 +542,22 @@ def checkAlive():
 
         if any(booleanLista)==False: 
             elossa = False
+            
+        sqlCH = "SELECT CH FROM enemy WHERE TileID = 2"
+        cur.execute(sqlCH)
+        result = cur.fetchall()
+        for row in result:
+            CH = row[0]
+            if CH == 0:
+                row = 0
+        intList = [CH[j] for CH in result for j in range(len(CH))] #tuple intiksi
+        for CH in range(0,len(result)):
+            if intList[CH] == 0:
+                booleanLista[CH] = False
+
+        if any(booleanLista)==False: 
+            elossa = False
+        
         return elossa
     
 class AloitusHuone():
@@ -541,7 +605,7 @@ class AloitusHuone():
             tavaraOtettu = True
 
         if tavaraOtettu == False:
-            print("ASDItems in this room: "+str(tavaraLista))
+            print("Items in this room: "+str(tavaraLista))
             print("You can only choose one of them...")
         else:
             self.otettuBool = True
@@ -594,7 +658,7 @@ class VarusteHuone():
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("Items in this room: "+str(tavaraLista))
+      #  print("Items in this room: "+str(tavaraLista))
         return tavaraLista
  
     def available_actions(self):
@@ -606,8 +670,11 @@ class VarusteHuone():
     def liikuS(self):
         liiku(4)
     def liikuE(self):
-        #liiku(7)
-        print("There is a hole in eastern wall...")
+        print("There is a hole on the eastern wall...")
+        kuiskaus = input ("Maybe you should try whispering a keyword to the other side? This works in movies sometimes:")
+        if kuiskaus == "1337ES":
+         print ("The wall shakes violently and as it erupts, a pathway opens up before you.")
+         liiku(7)
         time.sleep(1)
     def liikuW(self):
         liiku(1)
@@ -659,7 +726,7 @@ class stairWay(): #id 7
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("Items: "+str(tavaraLista))
+      #  print("Items: "+str(tavaraLista))
         return tavaraLista
  
     def available_actions(self):
@@ -703,7 +770,7 @@ class ropeBridge(): #id 6
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("AItems in this room: "+str(tavaraLista))
+       # print("AItems in this room: "+str(tavaraLista))
         return tavaraLista
  
     def available_actions(self):
@@ -729,13 +796,17 @@ def koysi():
         time.sleep(1)
         p = 60 #getPelaajaPaino(60)
         if   p < 50:            
-            ("You succesfully moved through bridge!")
+            print("You succesfully moved through bridge!")
             time.sleep(1)
         elif p > 50:
             time.sleep(1)
-            ("SHAKING!!!")
+            print("SHAKING!!!")
             time.sleep(1)
-            ("BRIDGE BROKED! YOU ARE FALLING IN DEEPS!!")
+            print("BRIDGE BROKED! YOU ARE FALLING IN DEEPS!!")   
+            global pelaajaElossa
+            pelaajaElossa = False
+            gameOver()
+        return
 
 def getPelaajaPaino(paino):
     p = paino
@@ -744,20 +815,33 @@ def getPelaajaPaino(paino):
 class Treasury(): #id 4
 
     def kartta(self):
-        print("|-----north-----|")
-        print("|               |")
-        print("|      you      |")
-        print("|                ")
-        print("|     MONSTER   east ")
-        print("|               |")
-        print("|               |")
-        print("----------------|")
+        elossa = checkAliveYksi(4)  #jos chimeraa ei olla tapettu
+        if elossa == True:
+            print("|-----north-----|")
+            print("|               |")
+            print("|      you      |")
+            print("|                ")
+            print("|     MONSTER   east ")
+            print("|               |")
+            print("|               |")
+            print("----------------|")
+        else:
+            print("|-----north-----|")
+            print("|               |")
+            print("|      you      |")
+            print("|                ")
+            print("|              east ")
+            print("|               |")
+            print("|               |")
+            print("----------------|")
 
     def taistele(self):
+        
         if any(vihuElossa4) == True:
             taisteluYksi(4, 3,4 ) #vihu id 4, , huoneId 4
         else:
-            print("The corpse of chimera is laying on floor.")
+            print("Corpse of the chimera is laying on floor.")
+
         return
     def tutkittavaa(self):
         lista = ["Goblin"]
@@ -776,7 +860,7 @@ class Treasury(): #id 4
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("Items: "+str(tavaraLista))
+      #  print("Items: "+str(tavaraLista))
         return tavaraLista
 
     vihujenMaara = 1
@@ -786,11 +870,19 @@ class Treasury(): #id 4
         return toiminnot
 
     def liikuN(self):
-        liiku(3)
+            liiku(3)
     def liikuS(self):
         print("You cannot move there.")
     def liikuE(self):
-        liiku(5)
+        elossa = checkAliveYksi(4)
+        if elossa == False:
+            cur = db.cursor()
+            text = "The corpse of chimera is laying on floor. There is still door towards east"
+            sql3 = "UPDATE tile SET description = '"+text+"' WHERE tileID = 4";  #Päivitetään huoneen info teksti kun chimera on tapettu
+            cur.execute(sql3)
+            liiku(5)
+        else:
+            print("The chimera is blocking your way to door")
     def liikuW(self):
         print("You cannot move there.")
         
@@ -807,12 +899,21 @@ class shop(): #id 5
         print("----------------|")
 
     def tutkittavaa(self):
-        lista = ["Goblin"]
+        lista = ["Shopkeeper"]
         return lista
     def tulos(self, string):
         st = ""
-        if string == "Goblin":
-            print("Goblins wants to kill you, run if you can!")
+        if string == "Shopkeeper":
+            print("This guy wants money")
+        if string == "Painting":
+            print("|---------------|")
+            print("|12345678ABYPEFG|")
+            print("|13345678ABCDEFG|")
+            print("|12345678ABCDEFG|")
+            print("|12375678ABGMEFG|")
+            print("|1234E678ABCDFTG|")
+            print("|12345S78ABCDEFG|")
+            print("|---------------|")
         return st
 
     def tavarat(self):  #Mitä tavaroita huoneessa on
@@ -823,7 +924,7 @@ class shop(): #id 5
         result = cur.fetchall()
         for row in result:
             tavaraLista.extend(row)
-        print("AItems in this room: "+str(tavaraLista))
+      #  print("Items in this room: "+str(tavaraLista))
         return tavaraLista
     
  
@@ -878,6 +979,54 @@ def pelaajaIske(dmg, vihuId, huoneId): #usea = True on useampi vihu
         elif huoneId == 4:
              vihuElossa4[0] = False
     return
+def pelaajaCH(eff, vihuId, huoneId):
+    CH = 0
+    var = random.randint(1,10)
+    if var == 1:
+        print("You told the monster it's mother is dissapointed in it.")
+    elif var == 2:
+        print("You told the monster that your uncle works for nintendo and can ask the devs to hardcode it out of the way for you.")
+    elif var == 3:
+        print("You told the monster you just want to be friends.")
+    elif var == 4:
+        print("You told the monster you have a disability and that it wouldnt want to be caught beating up an disabled person.")
+    elif var == 5:
+        print("You suggest to the monster to get a drink with you instead of fighting.")
+    elif var == 6:
+        print("You told the monster to go fuck itself.")
+    elif var == 7:
+        print("You told the monster it can't keep channeling it's aggression to adventurers since it isn't healthy.")
+    elif var == 8:
+        print("You flip the monster off.")
+    elif var == 9:
+        print("You ask the monster to let you progress.")
+    elif var == 10:
+        print("You told the monster about the bugs in your python code")
+    if eff == 0:
+        print("The  monster didn't care")
+    elif eff > 0:
+        print("Monster is reconsidering it's life choises.")
+    cur = db.cursor()
+    sqlCH = "SELECT CH FROM enemy WHERE EID = "+str(vihuId)
+    cur.execute(sqlCH)
+    result = cur.fetchall()
+    for row in result:
+            CH = row[0] # Ehkä väärin, vaatii testausta
+    CH = CH-eff
+    sql = "UPDATE enemy SET CH = "+str(CH)+" WHERE eid = "+str(vihuId)
+    cur.execute(sql)
+    sql2 = "select CH from enemy where eid = "+str(vihuId)
+    cur.execute(sql2)                                  
+    result = cur.fetchall()
+    for row in result:
+            CH = int(row[0])
+    if CH == 0:
+        print("The monster got confused and gave up.")
+        if huoneId == 2:  #goblin huone
+            vihuElossa[vihuId-1] = False
+        elif huoneId == 4:
+             vihuElossa4[0] = False
+    return
 
 def vihuIske(dmg, vihuId):
     print("                        Enemy nro."+str(vihuId+1)+" hits "+str(dmg))
@@ -905,14 +1054,67 @@ def vihuIske(dmg, vihuId):
     return
 
 def kaytaTaika():
+    taikaNimi = getTaikaNimi()
+    effect = 0
+    intellect = 0
+    print("Use '"+taikaNimi+"'?")
+    x = input("y/n?")
+    cur = db.cursor()
+    sql = "SELECT Effect FROM magic WHERE name = '"+taikaNimi+"';"
+    sql2 = "SELECT intellect FROM player;"
+    cur.execute(sql)
+    result = cur.fetchall()
+    intList = [i[j] for i in result for j in range(len(i))] #tuple intiksi
+    effect = intList[0]
+    
+    cur.execute(sql2)
+    result2 = cur.fetchall()
+    intList2 = [i[j] for i in result2 for j in range(len(i))] #tuple intiksi
+    intellect = intList2[0]
 
-    #Mitä tapahtuu kun taikakäytetään
-
+    dmg = effect*intellect  #DMG on intellect * taian efekti
+    
     return dmg
 
-def kaytaCharisma():
+
+def getTaikaNimi():
+    nimi = ""
+    cur = db.cursor()
+    sql = "SELECT magic.Name FROM magic, player WHERE magic.MagicID = player.MagicID;"
+    cur.execute(sql)
+    result = cur.fetchall()
+    for row in result:
+        nimi = row[0]
+    return nimi
     
-    return
+def kaytaCharisma():
+    CHA = 0
+    eff = 0
+    cur = db.cursor()
+    sql = "SELECT Charisma FROM player;"
+    cur.execute(sql)
+    result = cur.fetchall()
+    intList = [i[j] for i in result for j in range(len(i))] #tuple intiksi
+    CHA = intList[0]
+    if CHA == 1:
+        var = random.randint(1,4)
+        if var == 2:
+            eff = 1
+        else:
+            eff = 0
+    elif CHA == 2:
+        var = random.randint(1,3)
+        if var == 2:
+            eff = 1
+        else:
+            eff = 0
+    elif CHA == 3:
+        var = random.randint(1,2)
+        if var == 2:
+            eff = 1
+        else:
+            eff = 0
+    return eff
 
 def taisteluYksi(vihuId, escapeId, huoneId): #yksiloVihu jos vain 1
 
@@ -923,7 +1125,7 @@ def taisteluYksi(vihuId, escapeId, huoneId): #yksiloVihu jos vain 1
         looppaa = True
         tee = ""
         while looppaa==True:
-                tee = input("Attack or Flee?").lower()
+                tee = input("Fight or Flee?").lower()
                 if tee =="Flee" or tee=="f":
                     looppaa=False
                 elif tee=="fight" or tee=="a":
@@ -931,9 +1133,34 @@ def taisteluYksi(vihuId, escapeId, huoneId): #yksiloVihu jos vain 1
         
         if tee=="fight" or "a":
 
-            isku = random.randint(10,50) #int(input("Paljonko isket?"))
-            pelaajaIske(isku, vihuId, 4)
-            time.sleep(1)                   #odota 1 sekunti
+            Attack = 0
+            isku = "SELECT attack FROM player WHERE PID =1"#int(input("Paljonko isket?"))
+            cur=db.cursor()
+            cur.execute(isku)
+            result = cur.fetchall()
+            for row in result:
+                Attack = int(row[0])
+            Var = random.randint(0,2)
+            Attack2 = Attack-Var
+
+            dmg = 0
+            
+            x = input("Hit, spell or charisma?").lower()
+
+            if x == "hit":
+                dmg = Attack2
+                pelaajaIske(dmg, vihuId, 4)
+                time.sleep(1)
+            elif x == "spell":
+                dmg = kaytaTaika()
+                pelaajaIske(dmg, vihuId, 4)
+                time.sleep(1)
+            elif x == "charisma":
+                eff = kaytaCharisma()
+                pelaajaCH(eff, vihuId, 4)
+                time.sleep(1)
+                
+                               #odota 1 sekunti
             
             if huoneId == 4:    
                 if  any(vihuElossa4) == True:
@@ -982,8 +1209,26 @@ def taistelu(vihujenMaara, escapeId): #yksiloVihu jos vain 1
                 Attack = int(row[0])
             Var = random.randint(0,2)
             Attack2 = Attack-Var
-            pelaajaIske(Attack2, vihuId, 2)
-            time.sleep(1)                   #odota 1 sekunti
+
+            dmg = 0
+            
+            x = input("Hit, spell or charisma?").lower()
+
+            if x == "hit":
+                dmg = Attack2
+                pelaajaIske(dmg, vihuId, 2)
+                time.sleep(1) 
+            elif x == "spell":
+                dmg = kaytaTaika()
+                pelaajaIske(dmg, vihuId, 2)
+                time.sleep(1) 
+            elif x == "charisma":
+                eff = kaytaCharisma()
+                pelaajaCH(eff, vihuId, 4)
+                time.sleep(1)
+                
+                
+                              #odota 1 sekunti
                 
             for i in range(0,vihujenMaara): #Jokainen vihu iskee vuorollaan, tutkitaan jokainen yksi kerralaan läpi että ovatko ne elossa
                     time.sleep(1)
