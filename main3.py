@@ -7,7 +7,7 @@ peliLapaisty = False;  #Kun peli vedetty läpi, niin true
 originalData = []
 ogEnemy = []
 ogItem = []
-
+ase = ""
 
 def Stats():
     i = 0
@@ -26,14 +26,14 @@ def Stats():
             if Str < 3:
                 Str = Str+1
                 i = i+1
-                print(Str, Int, Cha)
+                print(Str, Cha, Int)
         elif SI == "cha":
             if Cha == 3:
                 print("Your Charisma is maxed out")
             if Cha < 3:
                 Cha = Cha+1
                 i = i+1
-                print(Str, Int, Cha)
+                print(Str, Cha, Int)
         elif SI == "int":
             if Int == 3:
                 print("Your Intellect is maxed out")
@@ -41,7 +41,7 @@ def Stats():
                 Int = Int+1
                 i = i+1
                 mag = mag+1
-                print(Str, Int, Cha, mag)
+                print(Str, Cha, Int, mag)
                 
         if i==3:
             print("Str "+str(Str)+" Cha "+str(Cha)+" Int "+str(Int))
@@ -55,6 +55,8 @@ def Stats():
                 Int = 1
                 mag = 0
                 x = 1
+            
+            
     createPelaajaStats(str(100), str(Str), str(Int), str(Cha), str(mag))
     return
 
@@ -114,7 +116,7 @@ def resetAll():
     global originalData    
     p = originalData
     print(p)
-    sql = "UPDATE player SET name = '"+p[0]+"', pid = "+str(p[1])+", money = "+str(p[2])+",tileId = "+str(p[3])+", hp = "+str(p[4])+",attack = "+str(p[5])+", intellect = "+str(p[6])+",charisma= "+str(p[7])+",magicid = NULL;"
+    sql = "UPDATE player SET name = '"+p[0]+"', pid = "+str(p[1])+", money = "+str(p[2])+",tileId = "+str(p[3])+", hp = "+str(p[4])+",attack = "+str(p[5])+", intellect = "+str(p[6])+",charisma= "+str(p[7])+",magicid = 0;"
     print(sql)
     cur.execute(sql)
 
@@ -305,8 +307,15 @@ def pelaa():
                 for i in range(0, len(pelaajanTavarat)):  #tavaran käyttäminen
                         if(action_input == "use "+str(pelaajanTavarat[i].lower())):
                             print("")
-                            print("Player is dressing up "+pelaajanTavarat[i])
+                            print("You are dressing up "+pelaajanTavarat[i])
+                            time.sleep(1)
                             pueItem(pelaajanTavarat[i])
+                for i in range(0, len(pelaajanTavarat)):  #tavaran käyttäminen
+                        if(action_input == "drop "+str(pelaajanTavarat[i].lower())):
+                            print("")
+                            print("You are dropping"+pelaajanTavarat[i])
+                            time.sleep(1)
+                            riisuItem(pelaajanTavarat[i])
                 
                 for i in range(0,4):  #ilman suuntiin liikkuminen
                         if(action_input == "move "+suunta[0] and i==0):
@@ -422,8 +431,43 @@ def pueItem(nimi):  #pukee varusteen tai aseen pelaajalle
     charisma = "0"
     setPelaajaStats(hp, attack, intellect, charisma)
     p = getPelaaja()
+    global ase
+    ase = nimi
     return stringList
 
+def riisuItem(nimi):
+
+    lista = pelaajanItemit
+    for i in range(0,len(lista)):
+        if lista[i] == nimi:
+            sql2 = "UPDATE item SET pid = NULL where (SELECT name FROM itemtype, item WHERE item.itid = itemtype.itid AND name = '"+nimi+"';"
+            global ase
+            if ase==nimi:  #tarkastetaan että pelaajalla on tämä päällä
+                cur = db.cursor()    
+                sql = "SELECT Attack, defense, Intellect, Hp, Special From itemtype Where name = '"+nimi+"';"
+                cur.execute(sql)
+                result = cur.fetchall()
+
+                stringList = [i[j] for i in result for j in range(len(i))] #tuple stringiksi
+                print("New Stats: "+str(stringList))
+                attack = int(stringList[0])
+                defense = int(stringList[1])
+                intellect = int(stringList[2])
+                hp = int(stringList[3])
+                charisma = "0"
+
+                newHp = str(0 - hp)
+                newAttack = str(0-attack)
+                newDefense = str(0-defense)
+                newIntellect = str(0-intellect)
+    
+                setPelaajaStats(newHp, newAttack, newIntellect, charisma)
+                p = getPelaaja()  #tulostaa uudet statsit
+                cur.execute(sql2)
+            else:
+                cur.execute(sql2)
+                
+    return 
 ########################################################################################################################################         LIIKKUMINEN
 
 def liiku(tile):  #liikutetaan pelaaja x,y koordniaatteihin
@@ -632,7 +676,7 @@ def checkAlive():  #usea vihu
         if any(booleanLista)==False: 
             elossa = False
             
-        sqlCH = "SELECT CH FROM enemy WHERE TileID = 2"
+        sqlCH = "SELECT CH FROM enemy WHERE TileID = 2;"
         cur.execute(sqlCH)
         result = cur.fetchall()
         for row in result:
@@ -778,8 +822,8 @@ class strange():  #ID 9, BOSS HUONE
     def kartta(self):
         print("|-----north-----|")
         print("|               |")
-        print("|    MONSTER    |")
-        print("|               |")
+        print("|    Living     |")
+        print("|    Armor      |")
         print("|               |")
         print("|    you        |")
         print("|  STAIRWAYS    |")
@@ -916,7 +960,7 @@ class ropeBridge(): #id 6
         print("|-----------------------|")
         print("|                       |")
         print("|                       |")
-        print("east    ---BRIDGE---  west")
+        print("west    ---BRIDGE--- east")
         print("|                       |")
         print("|                       |")
         print("|                       |")
@@ -991,18 +1035,18 @@ class Treasury(): #id 4
             print("|-----north-----|")
             print("|               |")
             print("|      you      |")
-            print("|                ")
-            print("|     MONSTER   east ")
             print("|               |")
+            print("|    Chimera    |")
+            print("|            east")
             print("|               |")
             print("----------------|")
         else:
             print("|-----north-----|")
             print("|               |")
             print("|      you      |")
-            print("|                ")
-            print("|              east ")
             print("|               |")
+            print("|               |")
+            print("|            east")
             print("|               |")
             print("----------------|")
 
@@ -1146,7 +1190,7 @@ def kauppa():
         print("I'm fine thanks")
 
 def katsoOnkoVaraa(hinta):
-
+    cur = db.cursor()
     onVaraa = False
     raha = getPelaajaRaha()            
     if hinta>raha:
@@ -1160,7 +1204,7 @@ def katsoOnkoVaraa(hinta):
         print("")
         print("You are welcome!")
         raha = raha-hinta
-        print("You have "+raha+" gold left")
+        print("You have "+str(raha)+" gold left")
         sql2 = "UPDATE player SET money = "+str(raha)+";"
         cur.execute(sql2)
         onVaraa = True
@@ -1238,7 +1282,7 @@ def pelaajaIske(dmg, vihuId, huoneId): #usea = True on useampi vihu
     return
 def pelaajaCH(eff, vihuId, huoneId):
     CH = 0
-    var = random.randint(1,10)
+    var = random.randint(1,11)
     if var == 1:
         print("You told the monster it's mother is dissapointed in it.")
     elif var == 2:
@@ -1259,6 +1303,8 @@ def pelaajaCH(eff, vihuId, huoneId):
         print("You ask the monster to let you progress.")
     elif var == 10:
         print("You told the monster about the bugs in your python code")
+    elif var == 11:
+        print("You tell the monster that monsters aren't real.")
     if eff == 0:
         print("The  monster didn't care")
     elif eff > 0:
@@ -1322,8 +1368,7 @@ def kaytaTaika():
     taikaNimi = getTaikaNimi()
     effect = 0
     intellect = 0
-    print("Use '"+taikaNimi+"'?")
-    x = input("y/n?")
+    print("Used '"+taikaNimi+"'")
     cur = db.cursor()
     sql = "SELECT Effect FROM magic WHERE name = '"+taikaNimi+"';"
     sql2 = "SELECT intellect FROM player;"
